@@ -133,7 +133,7 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
   return (
     <>
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900">
           Event Attendees {pagination.total > 0 && `(${pagination.total})`}
         </h2>
 
@@ -163,7 +163,7 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
                   className="border border-gray-200 rounded-md p-4 flex justify-between items-center hover:bg-gray-50 transition-colors"
                 >
                   <div>
-                    <h3 className="font-semibold text-lg">{rsvp.name}</h3>
+                    <h3 className="font-semibold text-lg text-gray-900">{rsvp.name}</h3>
                     <p className="text-gray-600 text-sm">{rsvp.email}</p>
                     <p className="text-gray-400 text-xs mt-1">
                       Registered: {new Date(rsvp.created_at).toLocaleString()}

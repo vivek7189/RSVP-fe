@@ -101,7 +101,7 @@ export default function RSVPForm({ onSuccess }: RSVPFormProps) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="bg-white p-6 rounded-lg shadow-md mb-8">
-      <h2 className="text-2xl font-bold mb-4">RSVP to Event</h2>
+      <h2 className="text-2xl font-bold mb-4 text-gray-900">RSVP to Event</h2>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -110,7 +110,7 @@ export default function RSVPForm({ onSuccess }: RSVPFormProps) {
       )}
 
       <div className="mb-4">
-        <label htmlFor="name" className="block text-gray-700 font-medium mb-2">
+        <label htmlFor="name" className="block text-gray-900 font-medium mb-2">
           Name <span className="text-gray-500 text-sm">(max 100 characters)</span>
         </label>
         <input
@@ -137,7 +137,7 @@ export default function RSVPForm({ onSuccess }: RSVPFormProps) {
       </div>
 
       <div className="mb-4">
-        <label htmlFor="email" className="block text-gray-700 font-medium mb-2">
+        <label htmlFor="email" className="block text-gray-900 font-medium mb-2">
           Email <span className="text-gray-500 text-sm">(max 200 characters)</span>
         </label>
         <input
