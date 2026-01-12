@@ -1,207 +1,144 @@
 # RSVP Manager - Frontend
 
-Next.js frontend application for secure event RSVP management with comprehensive validation and security features.
+Next.js frontend application for event RSVP management with pagination, validation, and security features.
 
-## Tech Stack
+## Summary & Design Assumptions
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **React:** 19
+**System Requirements:**
+- **1+ Million Users:** Handles millions of concurrent RSVPs
+- **Heavy Read Traffic:** 95%+ reads (viewing lists, checking status)
+- **Burst Write Traffic:** 10k-100k RSVPs in minutes when event opens
+- **High Consistency:** RSVP count and page 1 must be immediately consistent
+- **Low Latency:** Sub-100ms response times for cached reads
+- **High Availability:** 99.9%+ uptime
 
-## Quick Start
+**Tech Stack:** Next.js, React, TypeScript, Tailwind CSS
 
+**Quick Start:**
 ```bash
 npm install
 npm run dev
 ```
 
-Configure `.env.local` with API URL:
+Configure `.env.local` with `NEXT_PUBLIC_API_URL` pointing to backend API.
+
+## Caching Strategy
+
+**Frontend Integration with Backend Caching:**
+
+**Key Design:**
+- **Pagination:** Fetches 20 items per page (configurable, max 100)
+- **Cache-Aware:** Leverages backend atomic counter and page caching
+- **Real-time Updates:** Page 1 refreshes immediately after create/delete
+- **Optimistic UI:** Shows loading states during API calls
+
+**Flow:**
+- **Read:** Fetch paginated data → Display with pagination controls → Cache in component state
+- **Write:** Submit form → Show loading → Update local state → Refresh page 1
+- **Result:** Fast page loads, immediate feedback, seamless pagination
+
+**Why This Works:**
+- Backend atomic counter provides instant count (<1ms)
+- Backend page caching reduces API response time
+- Page 1 invalidation ensures fresh data after writes
+- Pagination prevents loading millions of records
+
+## Security
+
+**Multi-Layer Protection:**
+- **Input Validation:** Client-side validation before submission
+- **XSS Prevention:** Sanitizes inputs, removes dangerous characters
+- **CSP Headers:** Content Security Policy restricts resource loading
+- **Token Security:** JWT tokens stored in localStorage, sent in Authorization header
+- **Security Headers:** X-Frame-Options: DENY, HSTS, CORS
+
+**Validation Rules:**
+- Name: 2-100 chars, letters/spaces/hyphens/apostrophes only
+- Email: Max 200 chars, standard format validation
+- No special characters like `< >` in name field
+- Real-time validation on blur, prevents invalid submissions
+
+## Components
+
+**Core Components:**
+
+**RSVPForm:**
+- Form for creating new RSVPs
+- Inline validation (name, email)
+- Character count display
+- Enter key submission
+- Error handling and toast notifications
+
+**RSVPList:**
+- Displays paginated RSVP list
+- Shows total count
+- Copy cancellation link button
+- Cancel RSVP functionality
+- Loading and error states
+
+**Pagination:**
+- Page navigation with ellipsis
+- Previous/Next buttons
+- Current page highlighting
+- Responsive design
+
+**Toast:**
+- Success/error notifications
+- Auto-dismiss after 3 seconds
+- Multiple toast support
+
+**ConfirmModal:**
+- Confirmation dialogs
+- Loading states
+- Customizable messages
+
+## Architecture & Flow
+
+**Request Flow:**
+
+**Create RSVP:**
+1. User fills form (name, email)
+2. Client-side validation
+3. Submit to `POST /api/rsvps`
+4. Receive token, store in localStorage
+5. Refresh RSVP list (page 1)
+6. Show success toast
+
+**View RSVPs:**
+1. Fetch `GET /api/rsvps?page=1&limit=20`
+2. Display paginated list
+3. Show total count from backend
+4. Render pagination controls
+5. Handle page navigation
+
+**Delete RSVP:**
+1. Click cancel button
+2. Show confirmation modal
+3. Get token from localStorage
+4. Call `DELETE /api/rsvps/:id`
+5. Refresh list (adjust page if needed)
+6. Show success toast
+
+**API Integration:**
+- `createRSVP(name, email)` - Create new RSVP
+- `getRSVPs(page, limit)` - Get paginated RSVPs
+- `deleteRSVP(id, token)` - Delete RSVP
+- `verifyRSVPToken(token)` - Verify cancellation token
+- `cancelRSVPByToken(token)` - Cancel via token
+
+## Environment Variables
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3013/api
 ```
 
-## Design Decisions
-
-### Security Architecture
-
-**Content Security Policy (CSP):**
-- Restricts resource loading to prevent XSS
-- `default-src 'self'` - Only load from same origin
-- `script-src` - Allows Next.js required scripts
-- `connect-src` - Restricts API calls to allowed origins
-- `frame-ancestors 'none'` - Prevents clickjacking
-- Environment-aware (stricter in production)
-
-**Security Headers:**
-- `X-Frame-Options: DENY` - Prevents all framing
-- `X-Content-Type-Options: nosniff` - Prevents MIME sniffing
-- `Strict-Transport-Security` - Enforces HTTPS
-- `X-XSS-Protection` - Browser XSS filter
-- `Referrer-Policy` - Controls referrer information
-
-**Input Validation:**
-- Inline validation (no browser default validation)
-- Real-time error feedback
-- Validation on blur and submit
-- Client-side sanitization before API calls
-- Character limits enforced (name: 100, email: 200)
-
-### User Experience
-
-**Form Validation:**
-- Free typing allowed (no restrictions while typing)
-- Validation errors shown after blur or submit
-- Character counter for visual feedback
-- Enter key submits form if both fields filled
-- Error messages clear when user starts typing
-
-**Token Management:**
-- Tokens stored in localStorage per RSVP
-- Copy cancellation link functionality
-- Manual token entry removed (URL-only)
-- Secure token handling
-
-## Security Implementation
-
-### Input Sanitization
-
-**Validation Utility (`lib/validation.ts`):**
-- Removes dangerous characters: `< > " ' &`
-- Removes script tags and dangerous protocols
-- Name: 2-100 chars, letters/spaces/hyphens/apostrophes only
-- Email: Max 200 chars, valid format, no XSS patterns
-
-**Sanitization Flow:**
-1. User types → No restrictions
-2. On blur → Validate and show errors
-3. On submit → Sanitize → Validate → Send to API
-4. API receives → Additional sanitization on backend
-
-### XSS Protection
-
-**Multiple Layers:**
-- Input sanitization removes dangerous patterns
-- React automatically escapes output
-- CSP headers prevent script execution
-- No `dangerouslySetInnerHTML` usage
-- All user input sanitized before rendering
-
-### API Security
-
-**Request Security:**
-- Tokens sent in Authorization header
-- No tokens in URL parameters (except cancel page)
-- CORS configured on backend
-- Rate limiting handled by backend
-
-## Features
-
-### RSVP Form
-- Name input (max 100 characters)
-- Email input (max 200 characters)
-- Inline validation with error messages
-- Character counters
-- Enter key submission
-- Loading states
-
-### RSVP List
-- Display all attendees
-- Copy cancellation link button
-- Cancel RSVP button (only for own RSVP)
-- Real-time updates after mutations
-- Loading and error states
-
-### Cancel Page
-- Token verification from URL
-- RSVP details display
-- Confirmation modal
-- Success/error handling
-- Auto-redirect after cancellation
-
-## Project Structure
-
-```
-frontend/
-├── app/
-│   ├── page.tsx         # Main RSVP page
-│   ├── cancel/
-│   │   └── page.tsx     # Cancellation page
-│   ├── layout.tsx       # Root layout
-│   └── globals.css      # Global styles
-├── components/
-│   ├── RSVPForm.tsx     # RSVP creation form
-│   ├── RSVPList.tsx     # Attendees list
-│   ├── ConfirmModal.tsx # Confirmation dialogs
-│   └── Toast.tsx        # Toast notifications
-├── contexts/
-│   └── ToastContext.tsx # Toast state management
-├── lib/
-│   ├── api.ts           # API client
-│   └── validation.ts    # Input validation utilities
-├── types/
-│   └── index.ts         # TypeScript types
-└── .env.local           # Environment variables
-```
-
-## Security Features
-
-### Client-Side Protection
-
-**Input Validation:**
-- Real-time validation feedback
-- Pattern matching for name/email
-- Length restrictions enforced
-- Dangerous character removal
-
-**XSS Prevention:**
-- All user input sanitized
-- React automatic escaping
-- CSP headers block unauthorized scripts
-- No eval() or innerHTML usage
-
-**Token Security:**
-- Tokens stored in localStorage
-- Never exposed in URLs (except cancel page)
-- Sent only in Authorization headers
-- Automatic cleanup on cancellation
-
-### Security Headers
-
-All security headers configured in `next.config.ts`:
-- CSP with environment-aware policies
-- X-Frame-Options: DENY
-- HSTS for HTTPS enforcement
-- Content-Type-Options
-- XSS-Protection
-
-## API Integration
-
-**API Client (`lib/api.ts`):**
-- Centralized API calls
-- Error handling
-- Token management
-- Type-safe requests/responses
-
-**Endpoints Used:**
-- `POST /api/rsvps` - Create RSVP
-- `GET /api/rsvps` - Get all RSVPs
-- `DELETE /api/rsvps/:id` - Cancel RSVP
-- `GET /api/rsvps/verify-token` - Verify token
-- `DELETE /api/rsvps/cancel-by-token` - Cancel by token
-
 ## Production Considerations
 
-- Update CSP `connect-src` with production API URL
-- Remove `unsafe-eval` from CSP in production
-- Enable `upgrade-insecure-requests` in CSP
-- Configure production domain in CORS
-- Use environment variables for API URL
-- Enable Next.js production optimizations
-- Set up error tracking (Sentry)
-- Monitor CSP violations
-- Use CDN for static assets
-
-## License
-
-MIT
+- Configure production API URL
+- Enable CSP headers (already configured)
+- Optimize bundle size (Next.js automatic)
+- Enable image optimization
+- Configure CDN for static assets
+- Monitor API response times
+- Handle network errors gracefully
+- Implement retry logic for failed requests
