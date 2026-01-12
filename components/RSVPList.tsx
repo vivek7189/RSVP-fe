@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { getRSVPs, deleteRSVP } from '@/lib/api';
 import { RSVP } from '@/types';
 import ConfirmModal from './ConfirmModal';
+import Pagination from './Pagination';
 import { useToast } from '@/contexts/ToastContext';
 
 export default function RSVPList({ refreshTrigger }: { refreshTrigger: string }) {
@@ -14,18 +15,27 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(20);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false,
+  });
   const toast = useToast();
 
   useEffect(() => {
     loadRSVPs();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, page]);
 
   const loadRSVPs = async () => {
     try {
       setLoading(true);
       setError('');
-      const data = await getRSVPs();
-      setRsvps(data);
+      const response = await getRSVPs(page, limit);
+      setRsvps(response.data);
+      setPagination(response.pagination);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load RSVPs';
       setError(errorMessage);
@@ -33,6 +43,11 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteClick = (id: number) => {
@@ -66,10 +81,15 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
       setDeletingId(pendingDeleteId);
       await deleteRSVP(pendingDeleteId, token);
       localStorage.removeItem(`rsvp_token_${pendingDeleteId}`);
-      await loadRSVPs();
+      
+      if (rsvps.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        await loadRSVPs();
+      }
+      
       setShowConfirmModal(false);
       setPendingDeleteId(null);
-
       toast.success('RSVP cancelled successfully!');
     } catch (err) {
       setShowConfirmModal(false);
@@ -113,7 +133,9 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
   return (
     <>
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-4">Event Attendees ({rsvps.length})</h2>
+        <h2 className="text-2xl font-bold mb-4">
+          Event Attendees {pagination.total > 0 && `(${pagination.total})`}
+        </h2>
 
         {deleteError && (
           <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
@@ -181,6 +203,15 @@ export default function RSVPList({ refreshTrigger }: { refreshTrigger: string })
             })}
           </div>
         )}
+
+        <Pagination
+          page={page}
+          totalPages={pagination.totalPages}
+          hasNext={pagination.hasNext}
+          hasPrev={pagination.hasPrev}
+          onPageChange={handlePageChange}
+          loading={loading}
+        />
       </div>
 
       <ConfirmModal

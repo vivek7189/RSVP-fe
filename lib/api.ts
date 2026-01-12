@@ -19,8 +19,25 @@ export const createRSVP = async (name: string, email: string): Promise<CreateRSV
   return response.json();
 };
 
-export const getRSVPs = async (): Promise<RSVP[]> => {
-  const response = await fetch(`${API_URL}/rsvps`, {
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+export const getRSVPs = async (page: number = 1, limit: number = 20): Promise<PaginatedResponse<RSVP>> => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+
+  const response = await fetch(`${API_URL}/rsvps?${params}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
